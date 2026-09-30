@@ -108,6 +108,16 @@
 
 <main class="main" id="main">
 
+  <!-- ========== GLOBAL PAGE NAV BUTTONS (Back + Home) ========== -->
+  <div class="page-nav-bar" id="pageNavBar">
+    <button class="nav-pill-btn back-pill" onclick="pageBack()" title="Pichle page pe jayein">
+      <i class="fa fa-arrow-left"></i> <span>Back</span>
+    </button>
+    <button class="nav-pill-btn home-pill" onclick="goHome()" title="Dashboard pe jayein">
+      <i class="fa fa-home"></i> <span>Home</span>
+    </button>
+  </div>
+
   <section id="dashboard" class="page active">
     <div class="page-header">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap;">
@@ -170,7 +180,6 @@
 
   <section id="neworder" class="page">
     <div class="page-header">
-      <button class="btn back-btn" onclick="newOrderBack()"><i class="fa fa-arrow-left"></i> Wapas</button>
       <h1 id="newOrderHeading">Naya Order</h1>
       <p class="page-sub" id="newOrderSub">Pehle shopkeeper chunein</p>
     </div>
@@ -245,7 +254,6 @@
 
   <section id="orders" class="page">
     <div class="page-header">
-      <button class="btn back-btn" onclick="showPage('dashboard')"><i class="fa fa-arrow-left"></i> Wapas</button>
       <h1><i class="fa fa-truck"></i> Orders / Loading</h1>
       <p class="page-sub">Kis dukaan pe kitna maal dena hai</p>
     </div>
@@ -263,7 +271,6 @@
 
   <section id="routes" class="page">
     <div class="page-header">
-      <button class="btn back-btn" onclick="showPage('dashboard')"><i class="fa fa-arrow-left"></i> Dashboard</button>
       <h1><i class="fa fa-route"></i> Delivery Routes</h1>
       <p class="page-sub">Har shopkeeper ke products alag alag route mein assign karein</p>
     </div>
@@ -413,6 +420,28 @@
 
   <section id="settings" class="page">
     <div class="page-header"><h1>Settings</h1><p class="page-sub">Website customise karein</p></div>
+
+    <!-- ========== DISPLAY SIZE BOX (NEW) ========== -->
+    <div class="box" id="displaySizeBox">
+      <h3><i class="fa fa-text-height"></i> Display Size</h3>
+      <p class="hint">Website ka size adjust karein (text, buttons, cards — sab relayout honge)</p>
+      <div class="display-size-control">
+        <button class="size-btn" onclick="stepDisplaySize(-10)" title="Chhota karein"><i class="fa fa-minus"></i></button>
+        <input type="range" id="displaySizeSlider" min="50" max="150" step="5" value="100" oninput="onDisplaySizeSlide(this.value)" />
+        <button class="size-btn" onclick="stepDisplaySize(10)" title="Bada karein"><i class="fa fa-plus"></i></button>
+      </div>
+      <div class="display-size-value">
+        <strong id="displaySizeLabel">100%</strong>
+        <span>(Default: 100%)</span>
+      </div>
+      <div class="display-size-presets">
+        <button class="btn small" onclick="setDisplaySize(75)">75%</button>
+        <button class="btn small" onclick="setDisplaySize(100)">100%</button>
+        <button class="btn small" onclick="setDisplaySize(125)">125%</button>
+        <button class="btn small danger" onclick="resetDisplaySize()"><i class="fa fa-rotate-left"></i> Reset</button>
+      </div>
+    </div>
+
     <div class="box">
       <h3><i class="fa fa-pen"></i> Business Name</h3>
       <div class="form-group"><label>Website ka naam</label><input type="text" id="setBizName" /></div>
