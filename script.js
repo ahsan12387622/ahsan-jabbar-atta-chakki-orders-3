@@ -63,6 +63,14 @@ var dashboardLayout = null;
 var menuEditMode = false;
 var dashboardEditMode = false;
 
+// ========== NEW: Page History for Back button ==========
+var pageHistory = [];
+var currentPageId = 'dashboard';
+
+// ========== NEW: Display Size (in percent, 50-150) ==========
+var currentDisplaySize = 100;
+var DEFAULT_DISPLAY_SIZE = 100;
+
 var DEFAULT_MENU = [
   { key: 'dashboard', label: 'Dashboard', icon: 'fa-home', show: true },
   { key: 'neworder', label: 'Naya Order', icon: 'fa-plus-circle', show: true },
@@ -203,6 +211,15 @@ function loadLayouts() {
   } else {
     dashboardLayout = JSON.parse(JSON.stringify(DEFAULT_DASHBOARD));
   }
+
+  // Load display size
+  if (currentUser && currentUser.displaySize) {
+    var ds = parseInt(currentUser.displaySize);
+    if (!isNaN(ds) && ds >= 50 && ds <= 150) currentDisplaySize = ds;
+    else currentDisplaySize = DEFAULT_DISPLAY_SIZE;
+  } else {
+    currentDisplaySize = DEFAULT_DISPLAY_SIZE;
+  }
 }
 
 function saveMenuLayout() {
@@ -221,6 +238,75 @@ function saveDashboardLayout() {
   if (firebaseReady && currentUser.id) {
     db.collection('users').doc(String(currentUser.id)).update({ dashboardLayout: dashboardLayout }).catch(function(e) { console.log(e); });
   }
+}
+
+// ================== DISPLAY SIZE (NEW) ==================
+function applyDisplaySize() {
+  // 100% => 15px base. 50% => 7.5px, 150% => 22.5px
+  var basePx = 15 * (currentDisplaySize / 100);
+  if (basePx < 7) basePx = 7;
+  if (basePx > 25) basePx = 25;
+  document.documentElement.style.fontSize = basePx + 'px';
+
+  var lbl = document.getElementById('displaySizeLabel');
+  if (lbl) lbl.textContent = currentDisplaySize + '%';
+
+  var slider = document.getElementById('displaySizeSlider');
+  if (slider && String(slider.value) !== String(currentDisplaySize)) slider.value = currentDisplaySize;
+}
+
+function saveDisplaySize() {
+  if (!currentUser) return;
+  currentUser.displaySize = currentDisplaySize;
+  localStorage.setItem('currentUser', JSON.stringify(currentUser));
+  if (firebaseReady && currentUser.id) {
+    db.collection('users').doc(String(currentUser.id)).update({ displaySize: currentDisplaySize }).catch(function(e) { console.log(e); });
+  }
+}
+
+function setDisplaySize(percent) {
+  var p = parseInt(percent);
+  if (isNaN(p)) return;
+  if (p < 50) p = 50;
+  if (p > 150) p = 150;
+  currentDisplaySize = p;
+  applyDisplaySize();
+  saveDisplaySize();
+}
+
+function onDisplaySizeSlide(val) {
+  setDisplaySize(val);
+}
+
+function stepDisplaySize(delta) {
+  setDisplaySize(currentDisplaySize + delta);
+}
+
+function resetDisplaySize() {
+  setDisplaySize(DEFAULT_DISPLAY_SIZE);
+}
+
+// ================== PAGE NAVIGATION (Back + Home) ==================
+function pageBack() {
+  if (pageHistory.length > 1) {
+    pageHistory.pop(); // current page hatao
+    var prev = pageHistory[pageHistory.length - 1];
+    // Bina history mein add kiye navigate karo
+    navigateToPage(prev, false);
+  } else {
+    // History khaali — Dashboard pe
+    goHome();
+  }
+}
+
+function goHome() {
+  if (currentPageId === 'dashboard') return;
+  navigateToPage('dashboard', true);
+}
+
+function navigateToPage(pageId, addToHistory) {
+  if (addToHistory === undefined) addToHistory = true;
+  showPage(pageId, null, addToHistory);
 }
 
 // ================== MENU EDIT ==================
@@ -752,6 +838,7 @@ function doSignup() {
       perms: { newOrder: true, deliver: true, shopkeepers: true, history: true, settings: true, routes: true },
       menuLayout: JSON.parse(JSON.stringify(DEFAULT_MENU)),
       dashboardLayout: JSON.parse(JSON.stringify(DEFAULT_DASHBOARD)),
+      displaySize: DEFAULT_DISPLAY_SIZE,
       createdAt: new Date().toISOString()
     };
     db.collection('users').add(adminUser).then(function(ref) {
@@ -838,6 +925,7 @@ function showApp() {
   document.getElementById('pinScreen').style.display = 'none';
   document.getElementById('appWrapper').style.display = 'block';
   loadLayouts();
+  applyDisplaySize();
   renderSidebarNav();
   applySettings();
   renderDashboard();
@@ -851,6 +939,11 @@ function showApp() {
   applyDashboardLayout();
   renderHiddenMenuList();
   populateSalesFilters();
+
+  // Initialize page history
+  pageHistory = ['dashboard'];
+  currentPageId = 'dashboard';
+
   if (isAdmin()) renderUsers();
 }
 
@@ -873,6 +966,7 @@ function manualSync() {
       }
     }
     loadLayouts();
+    applyDisplaySize();
     renderSidebarNav();
     renderDashboard();
     renderShopkeepers();
@@ -905,9 +999,7 @@ function manualSync() {
 function renderSidebarNav() {
   var nav = document.getElementById('sidebarNav');
   if (!nav || !menuLayout) return;
-  var activePage = 'dashboard';
-  var pages = document.querySelectorAll('.page.active');
-  if (pages.length > 0) activePage = pages[0].id;
+  var activePage = currentPageId;
   var html = '';
   for (var i = 0; i < menuLayout.length; i++) {
     var item = menuLayout[i];
@@ -1007,13 +1099,22 @@ function checkOrderDelivered(order) {
 }
 
 // ================== NAVIGATION ==================
-function showPage(pageId, btn) {
+function showPage(pageId, btn, addToHistory) {
+  if (addToHistory === undefined) addToHistory = true;
+
   if (pageId === 'neworder' && !can('newOrder')) { alert('Permission nahi hai'); return; }
   if (pageId === 'shopkeepers' && !can('shopkeepers')) { alert('Permission nahi hai'); return; }
   if (pageId === 'history' && !can('history')) { alert('Permission nahi hai'); return; }
   if (pageId === 'settings' && !can('settings')) { alert('Permission nahi hai'); return; }
   if (pageId === 'users' && !isAdmin()) { alert('Sirf Admin'); return; }
   if (pageId === 'routes' && !can('routes')) { alert('Permission nahi hai'); return; }
+
+  // Update page history
+  if (addToHistory && pageId !== currentPageId) {
+    pageHistory.push(pageId);
+    if (pageHistory.length > 20) pageHistory.shift();
+  }
+  currentPageId = pageId;
 
   var pages = document.querySelectorAll('.page');
   for (var i = 0; i < pages.length; i++) pages[i].classList.remove('active');
@@ -1081,6 +1182,7 @@ function renderSettings() {
   var nameEl = document.getElementById('setBizName');
   if (nameEl) nameEl.value = settings.bizName;
   renderProductsList();
+  applyDisplaySize();
 }
 function renderProductsList() {
   var list = document.getElementById('productsList');
@@ -1147,6 +1249,7 @@ function saveUser() {
     user: user, pass: pass, display: display || user, isAdmin: false, perms: perms, pin: '',
     menuLayout: JSON.parse(JSON.stringify(DEFAULT_MENU)),
     dashboardLayout: JSON.parse(JSON.stringify(DEFAULT_DASHBOARD)),
+    displaySize: DEFAULT_DISPLAY_SIZE,
     createdAt: new Date().toISOString()
   };
   if (firebaseReady) {
@@ -2213,7 +2316,6 @@ function closeRouteModal() {
   document.getElementById('routeModal').classList.remove('active');
 }
 
-// Route Detail Modal se ek shopkeeper ke saare route-products deliver karo
 function deliverRouteShop(routeId, shopId) {
   if (!can('deliver')) { alert('Permission nahi hai'); return; }
 
@@ -2526,19 +2628,6 @@ function saveMultiOrder() {
       }
     }).catch(function(e) { alert('Error: ' + e.message); });
   }
-}
-function newOrderBack() {
-  var step3 = document.getElementById('quantityStep');
-  if (step3 && step3.style.display === 'block') { cancelQty(); return; }
-  var step2 = document.getElementById('productPickerStep');
-  if (step2 && step2.style.display === 'block') {
-    if (currentOrderItems.length > 0) {
-      if (!confirm('Add kiye gaye products save nahi hue. Wapas shopkeeper chunne jaana hai?')) return;
-    }
-    changeShopkeeper();
-    return;
-  }
-  showPage('dashboard');
 }
 
 // ================== ORDERS PAGE ==================
